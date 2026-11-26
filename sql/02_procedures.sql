@@ -14,6 +14,17 @@ CREATE TYPE dbo.JournalLineInput AS TABLE (
 );
 GO
 
+/* Money in a member account that is held back and can't be withdrawn.
+   Nothing is locked in part 1. Part 2 (loans) replaces this function so that
+   savings pledged as loan guarantees stay put. */
+CREATE OR ALTER FUNCTION dbo.fn_LockedAmount (@AccountId int)
+RETURNS decimal(19,4)
+AS
+BEGIN
+    RETURN 0;
+END;
+GO
+
 /* ============================================================================
    usp_PostJournal
    Returns 0 = posted, 1 = this Reference was already posted (safe retry, nothing done).
@@ -139,12 +150,30 @@ BEGIN
         JOIN   dbo.GLAccount AS g ON g.GLAccountId = a.ControlGLAccountId
         JOIN   dbo.vw_AccountTotals AS t WITH (NOEXPAND) ON t.AccountId = a.AccountId
         WHERE  g.NormalBalance = 'C'
-          AND  t.TotalCredit - t.TotalDebit < IIF(@Channel = 'SYSTEM', 0, p.MinBalance);
+          AND  t.TotalCredit - t.TotalDebit
+               < IIF(@Channel = 'SYSTEM', 0, p.MinBalance + dbo.fn_LockedAmount(a.AccountId));
 
         IF @AccountNo IS NOT NULL
         BEGIN
             SET @msg = CONCAT('Insufficient funds in account ', @AccountNo, '.');
             THROW 50021, @msg, 1;
+        END;
+
+        /* 6. Asset sub-ledger accounts (loans, interest receivable) can't be credited
+              below zero. A member can't "overpay" a loan into a negative balance. */
+        SET @AccountNo = NULL;
+        SELECT TOP (1) @AccountNo = a.AccountNo
+        FROM   (SELECT DISTINCT AccountId FROM @Resolved WHERE AccountId IS NOT NULL AND Credit > 0) AS c
+        JOIN   dbo.Account   AS a ON a.AccountId   = c.AccountId
+        JOIN   dbo.GLAccount AS g ON g.GLAccountId = a.ControlGLAccountId
+        JOIN   dbo.vw_AccountTotals AS t WITH (NOEXPAND) ON t.AccountId = a.AccountId
+        WHERE  g.NormalBalance = 'D'
+          AND  t.TotalDebit - t.TotalCredit < 0;
+
+        IF @AccountNo IS NOT NULL
+        BEGIN
+            SET @msg = CONCAT('Posting would take account ', @AccountNo, ' below zero.');
+            THROW 50022, @msg, 1;
         END;
 
         COMMIT TRANSACTION;
