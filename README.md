@@ -46,6 +46,8 @@ This project stores every transaction as journal lines (debits and credits) and 
 - `sql/10_generate_fake_loans.sql` runs a year of fake lending day by day
 - `sql/11_loan_tests.sql` runs 33 loan checks
 - `sql/12_loan_reports.sql` has the ageing report, PAR30, guarantor exposure and monthly income
+- `sql/13_dw_incremental_load.sql` loads journal lines into a reporting fact table using rowversion and MIN_ACTIVE_ROWVERSION()
+- `demo/watermark_race.sh` shows how a load that uses `WHERE Id > @LastId` loses a row when transactions commit out of order
 - `scripts/run-all.sh` rebuilds everything and runs the tests
 
 ## Running it
