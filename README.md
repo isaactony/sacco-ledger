@@ -48,6 +48,8 @@ This project stores every transaction as journal lines (debits and credits) and 
 - `sql/12_loan_reports.sql` has the ageing report, PAR30, guarantor exposure and monthly income
 - `sql/13_dw_incremental_load.sql` loads journal lines into a reporting fact table using rowversion and MIN_ACTIVE_ROWVERSION()
 - `demo/watermark_race.sh` shows how a load that uses `WHERE Id > @LastId` loses a row when transactions commit out of order
+- `sql/14_webhook_idempotency.sql` has three versions of a payment webhook handler, from one that credits twice to one that returns the original result on a retry
+- `demo/webhook_duplicates.sh` sends the same webhook twice, 300 ms apart, to all three handlers
 - `scripts/run-all.sh` rebuilds everything and runs the tests
 
 ## Running it

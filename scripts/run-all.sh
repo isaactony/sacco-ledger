@@ -30,7 +30,7 @@ fi
 for f in 00_reset_database.sql 01_schema.sql 02_procedures.sql 03_security.sql \
          04_seed_reference.sql 05_generate_fake_data.sql 06_tests.sql \
          08_loans_schema.sql 09_loans_procedures.sql 10_generate_fake_loans.sql 11_loan_tests.sql \
-         13_dw_incremental_load.sql; do
+         13_dw_incremental_load.sql 14_webhook_idempotency.sql; do
   echo
   echo "=== $f ==="
   start=$(date +%s)
